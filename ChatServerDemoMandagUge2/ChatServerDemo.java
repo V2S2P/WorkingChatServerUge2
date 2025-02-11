@@ -26,11 +26,11 @@ public class ChatServerDemo implements IObservable {
     public void startServer(int port){
         try {
             ServerSocket serverSocket = new ServerSocket(port);
-        while (true) {
-            Socket clientSocket = serverSocket.accept();
-            ClientHandler clientHandler = new ClientHandler(clientSocket,this);
-            clients.add(clientHandler);
-            new Thread(clientHandler).start();
+            while (true) {
+                Socket clientSocket = serverSocket.accept();
+                ClientHandler clientHandler = new ClientHandler(clientSocket,this);
+                clients.add(clientHandler);
+                new Thread(clientHandler).start();
             }
         }catch (IOException e){
             e.printStackTrace();
@@ -40,6 +40,15 @@ public class ChatServerDemo implements IObservable {
     public void broadcast(String message){
         for (ClientHandler clientHandler : clients){
             clientHandler.notify(message);
+        }
+    }
+    @Override
+    public void sendPrivateMessage(String message, String username){
+        for (ClientHandler clientHandler : clients){
+            if (clientHandler.name.equals(username)){
+                clientHandler.notify(message);
+                break;
+            }
         }
     }
     private static class ClientHandler implements Runnable, IObserver {
@@ -59,10 +68,18 @@ public class ChatServerDemo implements IObservable {
             try {
                 String message;
                 while ((message = in.readLine()) != null) {
-                    if (message.startsWith("#JOIN")){
+                    if (message.startsWith("#JOIN")) {
                         this.name = message.split(" ")[1];
                         server.broadcast("A new person joined the chat. Welcome to " + name);
-                    }else {
+                    } else if (message.startsWith("#PRIVATE")) {
+                        String[] messagePart = message.split(" ", 3);
+                        if (messagePart.length < 3){
+                            out.println("Invalid private message format.");
+                        }
+                        String recipient = messagePart[1];
+                        String privateMessage = messagePart[2];
+                        server.sendPrivateMessage("Private message from " + name + ": " + privateMessage, recipient);
+                    } else {
                         System.out.println(message);
                         server.broadcast("Message from " + name + ": " + message);
                     }
