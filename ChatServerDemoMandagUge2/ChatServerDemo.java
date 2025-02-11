@@ -43,7 +43,7 @@ public class ChatServerDemo implements IObservable {
         }
     }
     @Override
-    public void sendPrivateMessage(String message, String username){
+    public void sendPrivateMessage(String message, String username) throws IOException{
         for (ClientHandler clientHandler : clients){
             if (clientHandler.name.equals(username)){
                 clientHandler.notify(message);
@@ -79,6 +79,9 @@ public class ChatServerDemo implements IObservable {
                         String recipient = messagePart[1];
                         String privateMessage = messagePart[2];
                         server.sendPrivateMessage("Private message from " + name + ": " + privateMessage, recipient);
+                    } else if (message.startsWith("#LEAVE")) {
+                        server.broadcast(name + " has left the server");
+                        shutdown();
                     } else {
                         System.out.println(message);
                         server.broadcast("Message from " + name + ": " + message);
@@ -87,6 +90,11 @@ public class ChatServerDemo implements IObservable {
             }catch (IOException e){
 
             }
+        }
+        public void shutdown() throws IOException {
+            in.close();
+            out.close();
+            clientSocket.close();
         }
         @Override
         public void notify(String msg){
