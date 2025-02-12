@@ -32,7 +32,7 @@ public class ChatServerDemo implements IObservable {
                 ClientHandler clientHandler = new ClientHandler(clientSocket,this);
                 clients.add(clientHandler);
                 new Thread(clientHandler).start();
-                broadcast("Welcome to the chat. Please enter #JOIN <username>");
+                clientHandler.notify("Welcome to the chat. Please enter #JOIN <username>");
             }
         }catch (IOException e){
             e.printStackTrace();
@@ -125,75 +125,37 @@ public class ChatServerDemo implements IObservable {
             out = new PrintWriter(clientSocket.getOutputStream(),true);
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
         }
+        public void setName(String name){
+            this.name = name;
+        }
+        public String getName(){
+            return name;
+        }
+        public IObservable getServer(){
+            return server;
+        }
         @Override
         public void run() {
             try {
                 String message;
                 while ((message = in.readLine()) != null) {
-                    if (message.startsWith("#JOIN")) {
-                        this.name = message.split(" ")[1];
-                        server.broadcast("A new person joined the chat. Welcome to " + name);
-                    } else if (message.startsWith("#PRIVATE")) {
-                        String[] messagePart = message.split(" ", 3);
-                        if (messagePart.length < 3){
-                            out.println("Invalid private message format.");
-                            continue;
-                        }
-                        String recipient = messagePart[1];
-                        String privateMessage = messagePart[2];
+                    String[] messageParts = message.split(" ", 2);
+                    String commandName = messageParts[0];
 
-                        if (server.containsBannedWord(privateMessage)){
-                            handleViolations();
-                            continue;
-                        }
+                    ChatCommand command = ChatCommandFactory.getCommand(commandName);
 
-                        server.sendPrivateMessage("Private message from " + name + ": " + privateMessage, recipient);
-                    } else if (message.startsWith("#LEAVE")) {
-                        server.broadcast(name + " has left the server");
-                        shutdown();
-                    } else if(message.startsWith("#ADDWORD")) {
-                        String[] wordSplit = message.split(" ", 2);
-                        if (wordSplit.length < 2) {
-                            out.println("Invalid Format.");
-                            continue;
-                        }
-                        String word = wordSplit[1];
-                        server.addBannedWords(word);
-                    } else if (message.startsWith("#REMOVEWORD")) {
-                        String[] wordSplit = message.split(" ",2);
-                        if (wordSplit.length < 2){
-                            out.println("Invalid Format");
-                            continue;
-                        }
-                        String word = wordSplit[1];
-                        server.removeBannedWords(word);
-                    }else if (message.startsWith("#BANNEDWORDS")) {
-                        server.showAllBannedWords();
-                    }else if (message.startsWith("#GETLIST")) {
-                        server.getClientList(this);
-                    }else if (message.startsWith("#SUB")) {
-                        String[] messageToSend = message.split(" ", 3);
-                        if (messageToSend.length < 3){
-                            out.println("Invalid Format");
-                            return;
-                        }
-                        String[] toUsers = messageToSend[1].split(",");
-                        String sendMessage = messageToSend[2];
-
-                        server.sendPrivateMessage("From " + name + ": " + sendMessage,toUsers);
-                    }else if (message.startsWith("#HELP")) {
-                        helpCommands();
-                    }else {
-                        System.out.println(message);
-
-                        if (server.containsBannedWord(message)){
+                    if (command != null) {
+                        String[] args = message.split(" ");
+                        command.execute(args, this);
+                    } else {
+                        if (server.containsBannedWord(message)) {
                             handleViolations();
                             continue;
                         }
                         server.broadcast("Message from " + name + ": " + message);
                     }
                 }
-            }catch (IOException e){
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
