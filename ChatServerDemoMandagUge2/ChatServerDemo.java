@@ -19,6 +19,7 @@ public class ChatServerDemo implements IObservable {
     }
     private static volatile IObservable server = getInstance();
     private List<ClientHandler> clients = new ArrayList<>();
+    private List<String> bannedWords = new ArrayList<>(List.of("Fuck","Shit","Idiot"));
 
     public static void main(String[] args) {
         new ChatServerDemo().startServer(8080);
@@ -38,18 +39,43 @@ public class ChatServerDemo implements IObservable {
     }
     @Override
     public void broadcast(String message){
+        String filterMessage = filterMessage(message);
         for (ClientHandler clientHandler : clients){
-            clientHandler.notify(message);
+            clientHandler.notify(filterMessage);
         }
     }
     @Override
     public void sendPrivateMessage(String message, String username) throws IOException{
+        String filterMessage = filterMessage(message);
         for (ClientHandler clientHandler : clients){
             if (clientHandler.name.equals(username)){
-                clientHandler.notify(message);
+                clientHandler.notify(filterMessage);
                 break;
             }
         }
+    }
+    public String filterMessage(String message){
+        for (String word : bannedWords){
+            message = message.replaceAll("(?i)\\b" + word + "\\b", "**");
+        }
+        return message;
+    }
+    public void addBannedWords(String word){
+        bannedWords.add(word);
+        System.out.println(word + " has been added to the banned word-list");
+    }
+    public void removeBannedWords(String word){
+        bannedWords.remove(word);
+        System.out.println(word + " has been removed from the banned word-list");
+    }
+    public void getClientList(){
+        String names = null;
+        for (ClientHandler clientHandler : clients){
+
+        }
+    }
+    public void showAllBannedWords(){
+
     }
     private static class ClientHandler implements Runnable, IObserver {
         private IObservable server;
@@ -82,7 +108,27 @@ public class ChatServerDemo implements IObservable {
                     } else if (message.startsWith("#LEAVE")) {
                         server.broadcast(name + " has left the server");
                         shutdown();
-                    } else {
+                    } else if(message.startsWith("#ADDWORD")) {
+                        String[] wordSplit = message.split(" ", 2);
+                        if (wordSplit.length < 2) {
+                            out.println("Invalid Format.");
+                            continue;
+                        }
+                        String word = wordSplit[1];
+                        server.addBannedWords(word);
+                    } else if (message.startsWith("#REMOVEWORD")) {
+                        String[] wordSplit = message.split(" ",2);
+                        if (wordSplit.length < 2){
+                            out.println("Invalid Format");
+                            continue;
+                        }
+                        String word = wordSplit[1];
+                        server.removeBannedWords(word);
+                    }else if (message.startsWith("#BANNEDWORDS")) {
+                        server.showAllBannedWords();
+                    }else if (message.startsWith("GETLIST")) {
+
+                    }else {
                         System.out.println(message);
                         server.broadcast("Message from " + name + ": " + message);
                     }
