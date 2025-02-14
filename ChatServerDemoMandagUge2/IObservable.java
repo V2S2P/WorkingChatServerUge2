@@ -1,15 +1,16 @@
 package ChatServerDemoMandagUge2;
 
 import java.io.IOException;
-import ChatServerDemoMandagUge2.ChatServerDemo.*;
+import java.util.List;
 
 public interface IObservable {
     void broadcast(String message);
     void sendPrivateMessage(String message, String username)throws IOException;
-    void sendPrivateMessage(String message, String[] usernames);
+    void sendPrivateMessage(String senderName, String message, String[] usernames);
     void addBannedWords(String word);
     void removeBannedWords(String word);
-    void showAllBannedWords();
     void getClientList(ClientHandler requestingClient);
     boolean containsBannedWord(String msg);
+    List<ClientHandler> getClients();
+    List<String> getBannedWords();
 }

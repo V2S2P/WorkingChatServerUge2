@@ -10,6 +10,10 @@ public class ChatCommandFactory {
         commands.put("#JOIN", new JoinCommand());
         commands.put("#PRIVATE", new PrivateMessageCommand());
         commands.put("#LEAVE", new LeaveCommand());
+        commands.put("#GETLIST", new GetListCommand());
+        commands.put("#HELP", new GetHelpCommand());
+        commands.put("#BANNEDWORDS", new ShowBannedWordsCommand());
+        commands.put("#SUB", new SendMultiplePrivateMessage());
     }
     public static ChatCommand getCommand(String command){
         return commands.getOrDefault(command, null);
