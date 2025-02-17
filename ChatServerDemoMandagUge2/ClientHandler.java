@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class ClientHandler implements Runnable, IObserver{
         private IObservable server;
@@ -14,6 +16,7 @@ public class ClientHandler implements Runnable, IObserver{
         private BufferedReader in;
         private String name = null;
         private int violations = 0;
+        private List<String> commands = new ArrayList<>(List.of("#PRIVATE","#GETLIST","#SUB","#HELP","#LEAVE","BANNEDWORDS"));
         public ClientHandler(Socket socket,IObservable server) throws IOException {
             this.clientSocket = socket;
             this.server = server;
@@ -35,14 +38,18 @@ public class ClientHandler implements Runnable, IObserver{
                 String message;
                 while ((message = in.readLine()) != null) {
                     String[] messageParts = message.split(" ", 2);
-                    String commandName = messageParts[0];
+                    String commandName = messageParts[0]; // Contains the command <command>
 
-                    ChatCommand command = ChatCommandFactory.getCommand(commandName);
 
-                    if (command != null) {
-                        String[] args = message.split(" ");
-                        command.execute(args, this);
-                    } else {
+                    if (commandName.startsWith("#")) {
+                        ChatCommand command = ChatCommandFactory.getCommand(commandName); // We retrieve the appropriate command
+                        if (command != null) {
+                            String[] args = message.split(" "); // Contains the rest of the input message, such as <username> and <message>
+                            command.execute(args, this); // We execute the command with the rest of the message input after the #<command> and on this client (the one who types)
+                        } else {
+                            notify("Invalid command: " + commandName);
+                        }
+                    }else {
                         if (server.containsBannedWord(message)) {
                             handleViolations();
                             continue;
@@ -52,6 +59,14 @@ public class ClientHandler implements Runnable, IObserver{
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+        }
+        public void inputChecker(String message){
+            String[] messageSplit = message.split(" ",2);
+            String commandName = messageSplit[0];
+
+            if (!commands.contains(commandName)){
+                notify("Invalid command: " + commandName);
             }
         }
         public void helpCommands(){

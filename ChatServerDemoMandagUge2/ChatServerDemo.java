@@ -5,35 +5,42 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ChatServerDemo implements IObservable {
-    private ChatServerDemo(){}
-    public synchronized static IObservable getInstance(){
+    private ChatServerDemo(){} // A private constructor ensures that instances of this class can't be created directly from outside. This is also known as "singleton" approach.
+    public synchronized static IObservable getInstance(){ // Returns a single instance of ChatServerDemo. Synchronized ensures thread safety (multiple threads will be handled properly)
         if (server == null){
             server = new ChatServerDemo();
         }
         return server;
     }
-    private static volatile IObservable server = getInstance();
-    private List<ClientHandler> clients = new ArrayList<>();
-    private List<String> bannedWords = new ArrayList<>(List.of("Fuck","Shit","Idiot"));
+    private static volatile IObservable server = getInstance(); // The volatile keyword ensures that changes to "server" are visible across different threads.
+    private List<ClientHandler> clients = new ArrayList<>(); // Holds all active clients connected to the server.
+    private List<String> bannedWords = new ArrayList<>(List.of("Fuck","Shit","Idiot")); // Holds the banned words you can't say on the server.
 
     public static void main(String[] args) {
         new ChatServerDemo().startServer(8080);
     }
     public void startServer(int port){
+        ExecutorService threadPool = Executors.newCachedThreadPool(); // Reuses threads for tasks instead of destroying and creating new ones, also able to create new threads when needed.
         try {
-            ServerSocket serverSocket = new ServerSocket(port);
+            ServerSocket serverSocket = new ServerSocket(port); // Listens for incoming connections on the specified port number (8080)
             while (true) {
-                Socket clientSocket = serverSocket.accept();
-                ClientHandler clientHandler = new ClientHandler(clientSocket,this);
-                clients.add(clientHandler);
-                new Thread(clientHandler).start();
+                Socket clientSocket = serverSocket.accept(); // When a client connects, a socket object is created.
+                ClientHandler clientHandler = new ClientHandler(clientSocket,this); // A ClientHandler is initialized to handle communication with the client's socket.
+                clients.add(clientHandler); // We add each ClientHandler to a list.
+                //new Thread(clientHandler).start();
+                threadPool.execute(clientHandler); // Instead of creating a new thread manually, ClientHandler as a task is put inside the threadpool and threads sort of share it.
+
                 clientHandler.notify("Welcome to the chat. Please enter #JOIN <username>");
                 clientHandler.helpCommands();
             }
         }catch (IOException e){
             e.printStackTrace();
+        }finally {
+            threadPool.shutdown();
         }
     }
     @Override
